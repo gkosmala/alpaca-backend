@@ -1,4 +1,3 @@
-console.log("🔥 NEW VERSION DEPLOYED 🔥");
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -7,40 +6,40 @@ dotenv.config();
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 const PORT = process.env.PORT || 4000;
 
 const ALPACA_KEY = (process.env.ALPACA_KEY || "").trim();
 const ALPACA_SECRET = (process.env.ALPACA_SECRET || "").trim();
 
-const headers = {
-  "APCA-API-KEY-ID": ALPACA_KEY,
-  "APCA-API-SECRET-KEY": ALPACA_SECRET,
-  Accept: "application/json",
-};
+console.log("🔥 NEW VERSION DEPLOYED - DYNAMIC STOCK ROUTE ACTIVE 🔥");
 
 app.get("/", (req, res) => {
-  res.send("Backend is running");
+  res.send("Backend is running - dynamic stock route active");
 });
 
 app.get("/debug/env", (req, res) => {
   res.json({
     alpacaKeyLoaded: Boolean(ALPACA_KEY),
     alpacaSecretLoaded: Boolean(ALPACA_SECRET),
-    keyPreview: ALPACA_KEY
-      ? `${ALPACA_KEY.slice(0, 4)}...${ALPACA_KEY.slice(-4)}`
-      : null,
+    keyPreview: ALPACA_KEY ? `${ALPACA_KEY.slice(0, 4)}...${ALPACA_KEY.slice(-4)}` : null,
   });
 });
 
 app.get("/api/stock/:symbol", async (req, res) => {
-  try {
-    const symbol = req.params.symbol.toUpperCase();
+  const symbol = req.params.symbol.toUpperCase();
 
-    const response = await fetch(
-      `https://data.alpaca.markets/v2/stocks/${symbol}/snapshot?feed=iex`,
-      { headers }
-    );
+  try {
+    const url = `https://data.alpaca.markets/v2/stocks/${symbol}/snapshot?feed=iex`;
+
+    const response = await fetch(url, {
+      headers: {
+        "APCA-API-KEY-ID": ALPACA_KEY,
+        "APCA-API-SECRET-KEY": ALPACA_SECRET,
+        Accept: "application/json",
+      },
+    });
 
     const text = await response.text();
 
@@ -54,7 +53,7 @@ app.get("/api/stock/:symbol", async (req, res) => {
 
     const data = JSON.parse(text);
 
-    res.json({
+    return res.json({
       symbol,
       last: data.latestTrade?.p ?? null,
       bid: data.latestQuote?.bp ?? null,
@@ -64,10 +63,10 @@ app.get("/api/stock/:symbol", async (req, res) => {
       high: data.dailyBar?.h ?? null,
       low: data.dailyBar?.l ?? null,
       close: data.dailyBar?.c ?? null,
-      raw: data,
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: "Server error",
       message: err.message,
     });
@@ -75,5 +74,5 @@ app.get("/api/stock/:symbol", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
